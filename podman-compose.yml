@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  pxe-server:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: rpi-pxe-server
+    hostname: pxe-server
+
+    # Host networking required for DHCP/PXE to work properly
+    network_mode: host
+
+    # Required for NFS-Ganesha to function
+    privileged: true
+
+    volumes:
+      # Boot files (TFTP)
+      - ./data/tftpboot:/tftpboot:Z
+      # Root filesystem (NFS)
+      - ./data/nfs:/nfs:Z
+      # Configuration files (optional override)
+      - ./dnsmasq.conf:/etc/dnsmasq.conf:ro,Z
+      - ./ganesha.conf:/etc/ganesha/ganesha.conf:ro,Z
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Environment variables (optional)
+    environment:
+      - TZ=Europe/Bucharest

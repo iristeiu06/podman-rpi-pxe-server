@@ -1,0 +1,221 @@
+# Raspberry Pi PXE Boot Server (Podman Container)
+
+This container provides NFS, TFTP, and DHCP services for network booting a Raspberry Pi.
+
+## Components
+
+- **dnsmasq**: DHCP (proxy mode) and TFTP server
+- **NFS-Ganesha**: User-space NFS server (works in containers without kernel modules)
+
+## Requirements
+
+- Linux host (recommended) or WSL2 on Windows
+- Podman installed
+- Root/sudo access for network services
+- Raspberry Pi and server on the same network (Ethernet)
+
+## Quick Start
+
+```bash
+# 1. Setup directories
+./run.sh setup
+
+# 2. Edit configuration (see Configuration section below)
+nano dnsmasq.conf
+
+# 3. Copy your Raspberry Pi image files to data directories
+#    (see "Preparing Pi Files" section)
+
+# 4. Build the container
+./run.sh build
+
+# 5. Start the server
+sudo ./run.sh start
+
+# 6. Check logs
+./run.sh logs
+```
+
+## Configuration
+
+### 1. Edit `dnsmasq.conf`
+
+Find your network interface:
+```bash
+ip addr
+```
+
+Update the config:
+```conf
+# Set your interface
+interface=eth0
+
+# Set your network (proxy mode - works with existing DHCP)
+dhcp-range=10.48.65.0,proxy
+```
+
+### 2. Edit `ganesha.conf` (optional)
+
+The default configuration exports `/nfs/rpi/rootfs` to all clients. For production, restrict access:
+
+```conf
+CLIENT {
+    Clients = 10.48.65.0/24;  # Only allow this subnet
+    Access_Type = RW;
+    Squash = No_Root_Squash;
+}
+```
+
+## Preparing Pi Files
+
+### From an existing image
+
+```bash
+# Mount the Pi image
+sudo losetup -fP /path/to/your-image.img
+sudo mkdir -p /mnt/pi-boot /mnt/pi-rootfs
+sudo mount /dev/loop0p1 /mnt/pi-boot
+sudo mount /dev/loop0p2 /mnt/pi-rootfs
+
+# Copy to container data directories
+sudo cp -a /mnt/pi-boot/* ./data/tftpboot/rpi/
+sudo cp -a /mnt/pi-rootfs/* ./data/nfs/rpi/rootfs/
+
+# Cleanup
+sudo umount /mnt/pi-boot /mnt/pi-rootfs
+sudo losetup -d /dev/loop0
+```
+
+### Configure boot for NFS
+
+Edit `data/tftpboot/rpi/cmdline.txt`:
+```
+console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=<SERVER_IP>:/rpi/rootfs,vers=4 rw ip=dhcp rootwait
+```
+
+Edit `data/nfs/rpi/rootfs/etc/fstab`:
+```
+proc            /proc           proc    defaults          0       0
+<SERVER_IP>:/rpi/rootfs  /  nfs  defaults,noatime  0  0
+```
+
+**Note**: The `<SERVER_IP>` placeholder is automatically replaced with the detected server IP when the container starts. You can leave it as `<SERVER_IP>` and the entrypoint script will substitute the correct IP address based on the network interface configured in `dnsmasq.conf`.
+
+## Directory Structure
+
+```
+podman-pxe-server/
+├── Containerfile          # Container build file
+├── dnsmasq.conf           # DHCP/TFTP configuration
+├── ganesha.conf           # NFS configuration
+├── entrypoint.sh          # Container startup script
+├── podman-compose.yml     # Compose file (alternative to run.sh)
+├── run.sh                 # Helper script
+├── README.md              # This file
+└── data/                  # Created by setup
+    ├── tftpboot/
+    │   └── rpi/          # Boot files (kernel, dtbs, etc.)
+    └── nfs/
+        └── rpi/
+            └── rootfs/    # Root filesystem
+```
+
+## Commands
+
+```bash
+./run.sh setup     # Create directories and show instructions
+./run.sh build     # Build container image
+./run.sh start     # Start the container (use sudo)
+./run.sh stop      # Stop the container
+./run.sh restart   # Restart the container
+./run.sh logs      # View container logs
+./run.sh shell     # Open shell in container
+./run.sh status    # Show container status
+```
+
+## Using podman-compose (alternative)
+
+```bash
+# Build
+podman-compose build
+
+# Start
+sudo podman-compose up -d
+
+# Stop
+podman-compose down
+
+# Logs
+podman-compose logs -f
+```
+
+## Raspberry Pi EEPROM Configuration
+
+On the Pi (boot with SD card first):
+
+```bash
+sudo rpi-eeprom-config --edit
+```
+
+Set:
+```
+BOOT_ORDER=0xf21
+TFTP_IP=<SERVER_IP>
+```
+
+Then reboot, shut down, remove SD card, and power on.
+
+## Troubleshooting
+
+### Check services are listening
+```bash
+sudo ss -ulnp | grep -E '67|69|2049'
+```
+
+### Monitor DHCP/TFTP requests
+```bash
+./run.sh logs
+```
+
+### Test NFS mount from another machine
+```bash
+sudo mount -t nfs <SERVER_IP>:/rpi/rootfs /mnt
+```
+
+### Pi not finding boot files
+The Pi may look for files in a serial-number directory. Create a symlink:
+```bash
+# Get Pi serial (on the Pi)
+cat /proc/cpuinfo | grep Serial
+
+# Create symlink in container
+./run.sh shell
+ln -s /tftpboot/rpi /tftpboot/<serial>
+```
+
+### Container won't start
+- Ensure no other service uses ports 67, 69, 2049
+- Check for SELinux issues: `sudo setenforce 0` (temporary)
+- Run with verbose logging: `podman logs rpi-pxe-server`
+
+## Moving to Production Server
+
+1. Copy the entire `podman-pxe-server/` directory to the server
+2. Install Podman on the server
+3. Update `dnsmasq.conf` with the server's network interface
+4. Update IP addresses in `cmdline.txt` and `fstab`
+5. Build and start:
+   ```bash
+   ./run.sh build
+   sudo ./run.sh start
+   ```
+
+## Network Ports
+
+| Port | Protocol | Service |
+|------|----------|---------|
+| 67   | UDP      | DHCP    |
+| 69   | UDP      | TFTP    |
+| 2049 | TCP/UDP  | NFS     |
+| 111  | TCP/UDP  | RPC     |
+| 4011 | UDP      | PXE     |
