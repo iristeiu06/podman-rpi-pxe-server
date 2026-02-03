@@ -1,0 +1,1 @@
+console=serial0,115200 console=tty1 root=/dev/rootfs nfsroot=<SERVER_IP>:/rpi/rootfs,vers=4 rw ip=dhcp rootwait
