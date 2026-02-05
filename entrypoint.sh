@@ -39,7 +39,7 @@ echo "=== Configuring Server IP ==="
 # Get interface from dnsmasq.conf or use default
 INTERFACE=$(grep "^interface=" /etc/dnsmasq.conf 2>/dev/null | cut -d= -f2 | head -1)
 if [ -z "$INTERFACE" ]; then
-    INTERFACE="eth0"
+    INTERFACE="enxe2015074f51e"
 fi
 
 # Get IP address of the interface

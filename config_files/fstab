@@ -1,2 +1,0 @@
-proc     /proc           proc    defaults          0       0
-<SERVER_IP>:/rpi/rootfs / nfs defaults,noatime     0       0

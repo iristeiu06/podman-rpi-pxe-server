@@ -90,6 +90,7 @@ start_container() {
             --security-opt apparmor=unconfined \
             --security-opt seccomp=unconfined \
             --user root \
+            --env DNSMASQ_USER=root \
             -v "$SCRIPT_DIR/data/tftpboot:/tftpboot:Z" \
             -v "$SCRIPT_DIR/data/nfs:/nfs:Z" \
             -v "$SCRIPT_DIR/dnsmasq.conf:/etc/dnsmasq.conf:ro,Z" \
