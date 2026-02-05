@@ -104,6 +104,7 @@ sleep 1
 
 # Start NFS-Ganesha
 echo "Starting NFS-Ganesha..."
+mkdir -p /var/run/ganesha
 ganesha.nfsd -F -L /dev/stdout -f /etc/ganesha/ganesha.conf &
 GANESHA_PID=$!
 sleep 2
