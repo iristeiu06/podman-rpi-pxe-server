@@ -1,6 +1,6 @@
 # Raspberry Pi PXE Boot Server (Podman Container)
 
-This container provides NFS, TFTP, and DHCP services for network booting a Raspberry Pi.
+This container provides NFS, TFTP, and DHCP services for network booting a Raspberry Pi (both 4 and 5).
 
 ## Components
 
@@ -23,16 +23,13 @@ This container provides NFS, TFTP, and DHCP services for network booting a Raspb
 # 2. Edit configuration (see Configuration section below)
 nano dnsmasq.conf
 
-# 3. Copy your Raspberry Pi image files to data directories
-#    (see "Preparing Pi Files" section)
-
-# 4. Build the container
+# 3. Build the container
 ./run.sh build
 
-# 5. Start the server
+# 4. Start the server
 sudo ./run.sh start
 
-# 6. Check logs
+# 5. Check logs
 ./run.sh logs
 ```
 
@@ -68,7 +65,14 @@ CLIENT {
 
 ## Preparing Pi Files
 
-### From an existing image
+### Option 1: Setup directories
+
+- Copy Kuiper Image in the current folder (where is also the ./run.sh script)
+- Run the cmd `sudo ./run.sh setup`. 
+    - It will automatically mount the partitions and copy the boot files and rootfs in the newly created folders `data/tftpboot/`, respectively `data/nfs/rpi/rootfs`. 
+    - Also, it will replace the `cmdline.txt` and `fstab` with the custom files used for network boot.
+
+### Option 2: Manualy copy files from an existing image
 
 ```bash
 # Mount the Pi image
@@ -86,14 +90,14 @@ sudo umount /mnt/pi-boot /mnt/pi-rootfs
 sudo losetup -d /dev/loop0
 ```
 
-### Configure boot for NFS
+<ins>**Configure boot for NFS**</ins>
 
-Edit `data/tftpboot/rpi/cmdline.txt`:
+- Edit `data/tftpboot/rpi/cmdline.txt`:
 ```
 console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=<SERVER_IP>:/rpi/rootfs,vers=4 rw ip=dhcp rootwait
 ```
 
-Edit `data/nfs/rpi/rootfs/etc/fstab`:
+- Edit `data/nfs/rpi/rootfs/etc/fstab`:
 ```
 proc            /proc           proc    defaults          0       0
 <SERVER_IP>:/rpi/rootfs  /  nfs  defaults,noatime  0  0
@@ -113,8 +117,7 @@ podman-pxe-server/
 ├── run.sh                 # Helper script
 ├── README.md              # This file
 └── data/                  # Created by setup
-    ├── tftpboot/
-    │   └── rpi/          # Boot files (kernel, dtbs, etc.)
+    ├── tftpboot/          # Boot files (kernel, dtbs, etc.)
     └── nfs/
         └── rpi/
             └── rootfs/    # Root filesystem
@@ -123,14 +126,14 @@ podman-pxe-server/
 ## Commands
 
 ```bash
-./run.sh setup     # Create directories and show instructions
-./run.sh build     # Build container image
-./run.sh start     # Start the container (use sudo)
-./run.sh stop      # Stop the container
-./run.sh restart   # Restart the container
-./run.sh logs      # View container logs
-./run.sh shell     # Open shell in container
-./run.sh status    # Show container status
+sudo ./run.sh setup     # Create directories, copy boot files and rootfs and, show instructions
+sudo ./run.sh build     # Build container image
+sudo ./run.sh start     # Start the container (use sudo)
+sudo ./run.sh stop      # Stop the container
+sudo ./run.sh restart   # Restart the container
+sudo ./run.sh logs      # View container logs
+sudo ./run.sh shell     # Open shell in container
+sudo ./run.sh status    # Show container status
 ```
 
 ## Using podman-compose (alternative)
@@ -160,7 +163,6 @@ sudo rpi-eeprom-config --edit
 Set:
 ```
 BOOT_ORDER=0xf21
-TFTP_IP=<SERVER_IP>
 ```
 
 Then reboot, shut down, remove SD card, and power on.
@@ -194,6 +196,7 @@ ln -s /tftpboot/rpi /tftpboot/<serial>
 ```
 
 ### Container won't start
+- Run the commands with `sudo`
 - Ensure no other service uses ports 67, 69, 2049
 - Check for SELinux issues: `sudo setenforce 0` (temporary)
 - Run with verbose logging: `podman logs rpi-pxe-server`
