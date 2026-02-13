@@ -1,7 +1,6 @@
 FROM debian:bookworm-slim
 
-LABEL maintainer="ADI Kuiper Gen"
-LABEL description="NFS + TFTP + DHCP server for Raspberry Pi network boot"
+LABEL description="NFS, TFTP & DHCP server for Raspberry Pi network boot"
 
 # Install required packages
 RUN apt-get update && apt-get install -y \

@@ -57,7 +57,7 @@ else
     echo "Detected server IP: $SERVER_IP (interface: $INTERFACE)"
 
     # Update cmdline.txt if it exists and contains placeholder
-    CMDLINE_FILE="/tftpboot/rpi/cmdline.txt"
+    CMDLINE_FILE="/tftpboot/cmdline.txt"
     if [ -f "$CMDLINE_FILE" ]; then
         if grep -q '<SERVER_IP>\|SERVER_IP' "$CMDLINE_FILE"; then
             sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$CMDLINE_FILE"

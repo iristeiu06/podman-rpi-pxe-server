@@ -35,13 +35,29 @@ check_root() {
 
 setup_directories() {
     echo -e "${GREEN}Creating data directories...${NC}"
-    mkdir -p data/tftpboot/rpi
+    mkdir -p data/tftpboot/
     mkdir -p data/nfs/rpi/rootfs
+
+    losetup -fP kuiper_image.img
+    mkdir -p /mnt/pi-boot /mnt/pi-rootfs
+    mount /dev/loop0p1 /mnt/pi-boot
+    mount /dev/loop0p2 /mnt/pi-rootfs
+
+    # Copy to container data directories
+    sudo cp -a /mnt/pi-boot/* ./data/tftpboot/
+    sudo cp -a /mnt/pi-rootfs/* ./data/nfs/rpi/rootfs/
+
+    # Cleanup
+    sudo umount /mnt/pi-boot /mnt/pi-rootfs
+    sudo losetup -d /dev/loop0
+
+    cp config_files/cmdline.txt data/tftpboot/cmdline.txt
+    cp config_files/fstab data/nfs/rpi/rootfs/etc/fstab
+
     echo ""
     echo -e "${GREEN}Directory structure created:${NC}"
     echo "  data/"
-    echo "  ├── tftpboot/"
-    echo "  │   └── rpi/      <- Copy boot files here (kernel, dtbs, config.txt, cmdline.txt)"
+    echo "  ├── tftpboot/  <- Copy boot files here (kernel, dtbs, config.txt, cmdline.txt)"
     echo "  └── nfs/"
     echo "      └── rpi/"
     echo "          └── rootfs/ <- Copy root filesystem here"
