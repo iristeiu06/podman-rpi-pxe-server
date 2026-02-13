@@ -38,10 +38,10 @@ setup_directories() {
     mkdir -p data/tftpboot/
     mkdir -p data/nfs/rpi/rootfs
 
-    losetup -fP kuiper_image.img
+    LOOP_DEVICE=$(losetup -fP --show kuiper_image.img)
     mkdir -p /mnt/pi-boot /mnt/pi-rootfs
-    mount /dev/loop0p1 /mnt/pi-boot
-    mount /dev/loop0p2 /mnt/pi-rootfs
+    mount /dev/${LOOP_DEVICE}p1 /mnt/pi-boot
+    mount /dev/${LOOP_DEVICE}p2 /mnt/pi-rootfs
 
     # Copy to container data directories
     sudo cp -a /mnt/pi-boot/* ./data/tftpboot/
@@ -49,7 +49,7 @@ setup_directories() {
 
     # Cleanup
     sudo umount /mnt/pi-boot /mnt/pi-rootfs
-    sudo losetup -d /dev/loop0
+    sudo losetup -d /dev/${LOOP_DEVICE}
 
     cp config_files/cmdline.txt data/tftpboot/cmdline.txt
     cp config_files/fstab data/nfs/rpi/rootfs/etc/fstab
