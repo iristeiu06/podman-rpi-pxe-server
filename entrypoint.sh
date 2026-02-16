@@ -34,47 +34,47 @@ echo ""
 # =============================================================================
 # Auto-detect SERVER_IP and update boot configuration files
 # =============================================================================
-echo "=== Configuring Server IP ==="
+# echo "=== Configuring Server IP ==="
 
-# Get interface from dnsmasq.conf or use default
-INTERFACE=$(grep "^interface=" /etc/dnsmasq.conf 2>/dev/null | cut -d= -f2 | head -1)
-if [ -z "$INTERFACE" ]; then
-    INTERFACE="enxe2015074f51e"
-fi
+# # Get interface from dnsmasq.conf or use default
+# INTERFACE=$(grep "^interface=" /etc/dnsmasq.conf 2>/dev/null | cut -d= -f2 | head -1)
+# if [ -z "$INTERFACE" ]; then
+#     INTERFACE="enxe2015074f51e"
+# fi
 
-# Get IP address of the interface
-SERVER_IP=$(ip -4 addr show "$INTERFACE" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
+# # Get IP address of the interface
+# SERVER_IP=$(ip -4 addr show "$INTERFACE" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
 
-if [ -z "$SERVER_IP" ]; then
-    # Fallback: try to get any non-loopback IP
-    SERVER_IP=$(ip -4 addr show | grep -oP 'inet \K[\d.]+' | grep -v '^127\.' | head -1)
-fi
+# if [ -z "$SERVER_IP" ]; then
+#     # Fallback: try to get any non-loopback IP
+#     SERVER_IP=$(ip -4 addr show | grep -oP 'inet \K[\d.]+' | grep -v '^127\.' | head -1)
+# fi
 
-if [ -z "$SERVER_IP" ]; then
-    echo "WARNING: Could not detect server IP address"
-    echo "         You may need to manually configure cmdline.txt and fstab"
-else
-    echo "Detected server IP: $SERVER_IP (interface: $INTERFACE)"
+# if [ -z "$SERVER_IP" ]; then
+#     echo "WARNING: Could not detect server IP address"
+#     echo "         You may need to manually configure cmdline.txt and fstab"
+# else
+#     echo "Detected server IP: $SERVER_IP (interface: $INTERFACE)"
 
-    # Update cmdline.txt if it exists and contains placeholder
-    CMDLINE_FILE="/tftpboot/cmdline.txt"
-    if [ -f "$CMDLINE_FILE" ]; then
-        if grep -q '<SERVER_IP>\|SERVER_IP' "$CMDLINE_FILE"; then
-            sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$CMDLINE_FILE"
-            echo "Updated $CMDLINE_FILE with server IP"
-        fi
-    fi
+#     # Update cmdline.txt if it exists and contains placeholder
+#     CMDLINE_FILE="/tftpboot/cmdline.txt"
+#     if [ -f "$CMDLINE_FILE" ]; then
+#         if grep -q '<SERVER_IP>\|SERVER_IP' "$CMDLINE_FILE"; then
+#             sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$CMDLINE_FILE"
+#             echo "Updated $CMDLINE_FILE with server IP"
+#         fi
+#     fi
 
-    # Update fstab if it exists and contains placeholder
-    FSTAB_FILE="/nfs/rpi/rootfs/etc/fstab"
-    if [ -f "$FSTAB_FILE" ]; then
-        if grep -q '<SERVER_IP>\|SERVER_IP' "$FSTAB_FILE"; then
-            sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$FSTAB_FILE"
-            echo "Updated $FSTAB_FILE with server IP"
-        fi
-    fi
-fi
-echo ""
+#     # Update fstab if it exists and contains placeholder
+#     FSTAB_FILE="/nfs/rpi/rootfs/etc/fstab"
+#     if [ -f "$FSTAB_FILE" ]; then
+#         if grep -q '<SERVER_IP>\|SERVER_IP' "$FSTAB_FILE"; then
+#             sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$FSTAB_FILE"
+#             echo "Updated $FSTAB_FILE with server IP"
+#         fi
+#     fi
+# fi
+# echo ""
 
 # Check for required directories
 echo "=== Checking directories ==="

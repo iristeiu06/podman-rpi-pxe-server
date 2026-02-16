@@ -54,28 +54,65 @@ setup_directories() {
     cp config_files/cmdline.txt data/tftpboot/cmdline.txt
     cp config_files/fstab data/nfs/rpi/rootfs/etc/fstab
 
+    echo "=== Configuring Server IP ==="
+
+    # Get interface from dnsmasq.conf or use default
+    INTERFACE=$(grep "^interface=" dnsmasq.conf 2>/dev/null | cut -d= -f2 | head -1)
+    if [ -z "$INTERFACE" ]; then
+        INTERFACE="eth0"
+    fi
+
+    # Get IP address of the interface
+    SERVER_IP=$(ip -4 addr show "$INTERFACE" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
+
+    if [ -z "$SERVER_IP" ]; then
+        # Fallback: try to get any non-loopback IP
+        SERVER_IP=$(ip -4 addr show | grep -oP 'inet \K[\d.]+' | grep -v '^127\.' | head -1)
+    fi
+
+    if [ -z "$SERVER_IP" ]; then
+        echo "WARNING: Could not detect server IP address"
+        echo "Manually replace <SERVER_IP> with host's IP in cmdline.txt in data/tftpboot/rpi/ and
+         in fstab in data/nfs/rpi/rootfs/etc/ "
+    else
+        echo "Detected server IP: $SERVER_IP (interface: $INTERFACE)"
+
+        # Update cmdline.txt if it exists and contains placeholder
+        CMDLINE_FILE="data/tftpboot/cmdline.txt"
+        if [ -f "$CMDLINE_FILE" ]; then
+            if grep -q '<SERVER_IP>\|SERVER_IP' "$CMDLINE_FILE"; then
+                sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$CMDLINE_FILE"
+                echo "Updated $CMDLINE_FILE with server IP"
+            fi
+        fi
+
+        # Update fstab if it exists and contains placeholder
+        FSTAB_FILE="data/nfs/rpi/rootfs/etc/fstab"
+        if [ -f "$FSTAB_FILE" ]; then
+            if grep -q '<SERVER_IP>\|SERVER_IP' "$FSTAB_FILE"; then
+                sed -i "s/<SERVER_IP>/$SERVER_IP/g; s/SERVER_IP/$SERVER_IP/g" "$FSTAB_FILE"
+                echo "Updated $FSTAB_FILE with server IP"
+            fi
+        fi
+    fi
+    echo ""
+
     echo ""
     echo -e "${GREEN}Directory structure created:${NC}"
     echo "  data/"
-    echo "  ├── tftpboot/  <- Copy boot files here (kernel, dtbs, config.txt, cmdline.txt)"
+    echo "  ├── tftpboot/  <- Check for boot files here (kernel, dtbs, config.txt, cmdline.txt)"
     echo "  └── nfs/"
     echo "      └── rpi/"
-    echo "          └── rootfs/ <- Copy root filesystem here"
+    echo "          └── rootfs/ <- Check root filesystem here"
     echo ""
     echo -e "${YELLOW}Next steps:${NC}"
     echo "1. Edit dnsmasq.conf:"
     echo "   - Set 'interface' to your network interface (check with 'ip addr')"
     echo "   - Set 'dhcp-range' to match your network"
     echo ""
-    echo "2. Copy your Raspberry Pi image files:"
+    echo "2. Copy Raspberry Pi image files, if not already copied:"
     echo "   - Mount your .img file and copy boot partition to data/tftpboot/rpi/"
     echo "   - Copy rootfs partition to data/nfs/rpi/rootfs/"
-    echo ""
-    echo "3. Update cmdline.txt in data/tftpboot/rpi/:"
-    echo "   console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=<SERVER_IP>:/rpi/rootfs,vers=4 rw ip=dhcp rootwait"
-    echo ""
-    echo "4. Update fstab in data/nfs/rpi/rootfs/etc/fstab:"
-    echo "   <SERVER_IP>:/rpi/rootfs  /  nfs  defaults,noatime  0  0"
     echo ""
     echo "5. Build and start the container:"
     echo "   ./run.sh build"

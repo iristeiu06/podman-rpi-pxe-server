@@ -14,6 +14,51 @@ This container provides NFS, TFTP, and DHCP services for network booting a Raspb
 - Root/sudo access for network services
 - Raspberry Pi and server on the same network (Ethernet)
 
+## Configurations Before Starting
+Verify that each of the following configuration are set correctly
+
+### ``dnsmasq.conf``
+
+Use `ip addr` on the host to find the correct interface name
+```bash
+interface=<INTERFACE>
+```
+
+Replace with network address (proxy mode - works with existing DHCP)
+```bash
+# OPTION A: Proxy Mode
+dhcp-range=<NETWORK_ADDRESS>,proxy
+```
+
+```bash
+# OPTION B 
+# Adjust IP range and lease time for your network
+dhcp-range=10.48.65.100,10.48.65.150,12h
+dhcp-option=option:router,10.48.65.1
+dhcp-option=option:dns-server,8.8.8.8,8.8.4.4
+```
+
+### ``ganesha.conf`` (optional)
+
+The default configuration exports `/nfs/rpi/rootfs` to all clients. 
+
+Restrict access to a subnet:
+
+```bash
+EXPORT{ 
+    ...
+
+    CLIENT {
+        Clients = 10.48.65.0/24;  # Only allow this subnet
+        Access_Type = RW;
+        Squash = No_Root_Squash;
+    }
+
+    ...
+}
+```
+
+
 ## Quick Start
 
 ```bash
@@ -31,36 +76,6 @@ sudo ./run.sh start
 
 # 5. Check logs
 ./run.sh logs
-```
-
-## Configuration
-
-### 1. Edit `dnsmasq.conf`
-
-Find your network interface:
-```bash
-ip addr
-```
-
-Update the config:
-```conf
-# Set your interface
-interface=eth0
-
-# Set your network (proxy mode - works with existing DHCP)
-dhcp-range=10.48.65.0,proxy
-```
-
-### 2. Edit `ganesha.conf` (optional)
-
-The default configuration exports `/nfs/rpi/rootfs` to all clients. For production, restrict access:
-
-```conf
-CLIENT {
-    Clients = 10.48.65.0/24;  # Only allow this subnet
-    Access_Type = RW;
-    Squash = No_Root_Squash;
-}
 ```
 
 ## Preparing Pi Files
@@ -200,18 +215,6 @@ ln -s /tftpboot/rpi /tftpboot/<serial>
 - Ensure no other service uses ports 67, 69, 2049
 - Check for SELinux issues: `sudo setenforce 0` (temporary)
 - Run with verbose logging: `podman logs rpi-pxe-server`
-
-## Moving to Production Server
-
-1. Copy the entire `podman-pxe-server/` directory to the server
-2. Install Podman on the server
-3. Update `dnsmasq.conf` with the server's network interface
-4. Update IP addresses in `cmdline.txt` and `fstab`
-5. Build and start:
-   ```bash
-   ./run.sh build
-   sudo ./run.sh start
-   ```
 
 ## Network Ports
 
