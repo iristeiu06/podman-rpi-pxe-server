@@ -97,7 +97,7 @@ sudo mount /dev/loop0p1 /mnt/pi-boot
 sudo mount /dev/loop0p2 /mnt/pi-rootfs
 
 # Copy to container data directories
-sudo cp -a /mnt/pi-boot/* ./data/tftpboot/rpi/
+sudo cp -a /mnt/pi-boot/* ./data/tftpboot/
 sudo cp -a /mnt/pi-rootfs/* ./data/nfs/rpi/rootfs/
 
 # Cleanup
@@ -107,7 +107,7 @@ sudo losetup -d /dev/loop0
 
 <ins>**Configure boot for NFS**</ins>
 
-- Edit `data/tftpboot/rpi/cmdline.txt`:
+- Edit `data/tftpboot/cmdline.txt`:
 ```
 console=serial0,115200 console=tty1 root=/dev/nfs nfsroot=<SERVER_IP>:/rpi/rootfs,vers=4 rw ip=dhcp rootwait
 ```
@@ -118,7 +118,7 @@ proc            /proc           proc    defaults          0       0
 <SERVER_IP>:/rpi/rootfs  /  nfs  defaults,noatime  0  0
 ```
 
-**Note**: The `<SERVER_IP>` placeholder is automatically replaced with the detected server IP when the container starts. You can leave it as `<SERVER_IP>` and the entrypoint script will substitute the correct IP address based on the network interface configured in `dnsmasq.conf`.
+**Note**: The `<SERVER_IP>` placeholder is automatically configured at setup time. If not, it can be manually replaced or left as `<SERVER_IP>` and the entrypoint script will substitute the correct IP address based on the network interface configured in `dnsmasq.conf`.
 
 ## Directory Structure
 
@@ -141,7 +141,7 @@ podman-pxe-server/
 ## Commands
 
 ```bash
-sudo ./run.sh setup     # Create directories, copy boot files and rootfs and, show instructions
+sudo ./run.sh setup     # Create directories, copy boot files and rootfs, and show instructions
 sudo ./run.sh build     # Build container image
 sudo ./run.sh start     # Start the container (use sudo)
 sudo ./run.sh stop      # Stop the container
@@ -207,7 +207,7 @@ cat /proc/cpuinfo | grep Serial
 
 # Create symlink in container
 ./run.sh shell
-ln -s /tftpboot/rpi /tftpboot/<serial>
+ln -s /tftpboot /tftpboot/<serial>
 ```
 
 ### Container won't start
@@ -218,10 +218,9 @@ ln -s /tftpboot/rpi /tftpboot/<serial>
 
 ## Network Ports
 
-| Port | Protocol | Service |
-|------|----------|---------|
-| 67   | UDP      | DHCP    |
-| 69   | UDP      | TFTP    |
-| 2049 | TCP/UDP  | NFS     |
-| 111  | TCP/UDP  | RPC     |
-| 4011 | UDP      | PXE     |
+| Port | Protocol | Service      |
+|------|----------|--------------|
+| 67   | UDP      | DHCP         |
+| 69   | UDP      | TFTP         |
+| 4011 | UDP      | PXE (ProxyDHCP) |
+| 2049 | TCP/UDP  | NFS          |

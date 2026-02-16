@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories
-RUN mkdir -p /tftpboot/rpi \
+RUN mkdir -p /tftpboot \
     && mkdir -p /nfs/rpi/rootfs \
     && mkdir -p /etc/ganesha \
     && mkdir -p /run/rpcbind

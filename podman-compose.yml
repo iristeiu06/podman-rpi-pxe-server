@@ -14,18 +14,23 @@ services:
     # Required for NFS-Ganesha to function
     privileged: true
 
+    # Security options for NFS and DHCP
+    security_opt:
+      - apparmor=unconfined
+      - seccomp=unconfined
+
+    user: root
+
     volumes:
-      # Boot files (TFTP)
       - ./data/tftpboot:/tftpboot:Z
-      # Root filesystem (NFS)
       - ./data/nfs:/nfs:Z
-      # Configuration files (optional override)
       - ./dnsmasq.conf:/etc/dnsmasq.conf:ro,Z
       - ./ganesha.conf:/etc/ganesha/ganesha.conf:ro,Z
 
     # Restart policy
     restart: unless-stopped
 
-    # Environment variables (optional)
+    # Environment variables
     environment:
       - TZ=Europe/Bucharest
+      - DNSMASQ_USER=root
