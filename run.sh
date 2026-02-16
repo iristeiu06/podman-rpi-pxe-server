@@ -72,8 +72,8 @@ setup_directories() {
 
     if [ -z "$SERVER_IP" ]; then
         echo "WARNING: Could not detect server IP address"
-        echo "Manually replace <SERVER_IP> with host's IP in cmdline.txt in data/tftpboot/"
-        echo "and in fstab in data/nfs/rpi/rootfs/etc/"
+        echo "Manually replace <SERVER_IP> with host's IP in cmdline.txt in data/tftpboot/rpi/ and
+         in fstab in data/nfs/rpi/rootfs/etc/ "
     else
         echo "Detected server IP: $SERVER_IP (interface: $INTERFACE)"
 
@@ -111,10 +111,10 @@ setup_directories() {
     echo "   - Set 'dhcp-range' to match your network"
     echo ""
     echo "2. Copy Raspberry Pi image files, if not already copied:"
-    echo "   - Mount your .img file and copy boot partition to data/tftpboot/"
+    echo "   - Mount your .img file and copy boot partition to data/tftpboot/rpi/"
     echo "   - Copy rootfs partition to data/nfs/rpi/rootfs/"
     echo ""
-    echo "3. Build and start the container:"
+    echo "5. Build and start the container:"
     echo "   ./run.sh build"
     echo "   ./run.sh start"
     echo ""
@@ -122,49 +122,73 @@ setup_directories() {
 
 build_image() {
     echo -e "${GREEN}Building PXE server container image...${NC}"
-    podman-compose build
+    podman build -t rpi-pxe-server:latest .
 }
 
 start_container() {
     check_root
     echo -e "${GREEN}Starting PXE server container...${NC}"
-    podman-compose up -d
+
+    # Check if container already exists
+    if podman container exists rpi-pxe-server 2>/dev/null; then
+        echo "Container already exists, starting..."
+        podman start rpi-pxe-server
+    else
+        echo "Creating and starting container..."
+        podman run -d \
+            --name rpi-pxe-server \
+            --hostname pxe-server \
+            --network host \
+            --privileged \
+            --security-opt apparmor=unconfined \
+            --security-opt seccomp=unconfined \
+            --user root \
+            --env DNSMASQ_USER=root \
+            -v "$SCRIPT_DIR/data/tftpboot:/tftpboot:Z" \
+            -v "$SCRIPT_DIR/data/nfs:/nfs:Z" \
+            -v "$SCRIPT_DIR/dnsmasq.conf:/etc/dnsmasq.conf:ro,Z" \
+            -v "$SCRIPT_DIR/ganesha.conf:/etc/ganesha/ganesha.conf:ro,Z" \
+            --restart unless-stopped \
+            rpi-pxe-server:latest
+    fi
+
     echo ""
     echo -e "${GREEN}Container started. Check logs with: ./run.sh logs${NC}"
 }
 
 stop_container() {
     echo -e "${YELLOW}Stopping PXE server container...${NC}"
-    podman-compose down
-    podman-compose rm -f rpi-pxe-server
+    podman stop rpi-pxe-server 2>/dev/null || echo "Container not running"
 }
 
 restart_container() {
-    echo -e "${YELLOW}Restarting PXE server container...${NC}"
-    podman-compose restart
+    stop_container
+    sleep 2
+    start_container
 }
 
 show_logs() {
-    podman-compose logs -f
+    podman logs -f rpi-pxe-server
 }
 
 open_shell() {
-    podman-compose exec pxe-server /bin/bash
+    podman exec -it rpi-pxe-server /bin/bash
 }
 
 show_status() {
     echo -e "${GREEN}Container status:${NC}"
-    podman-compose ps
+    podman ps -a --filter name=rpi-pxe-server --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
     echo ""
 
-    if podman-compose ps --quiet 2>/dev/null | grep -q .; then
-        echo -e "${GREEN}Services should be listening on:${NC}"
-        echo "  - DHCP: port 67/udp"
-        echo "  - TFTP: port 69/udp"
-        echo "  - PXE:  port 4011/udp"
-        echo "  - NFS:  port 2049/tcp+udp"
-        echo ""
-        echo "Check with: ss -ulnp | grep -E '67|69|2049'"
+    if podman container exists rpi-pxe-server 2>/dev/null; then
+        if podman inspect rpi-pxe-server --format '{{.State.Running}}' 2>/dev/null | grep -q true; then
+            echo -e "${GREEN}Services should be listening on:${NC}"
+            echo "  - DHCP: port 67/udp"
+            echo "  - TFTP: port 69/udp"
+            echo "  - NFS:  port 2049/tcp+udp"
+            echo ""
+            echo "Check with: ss -ulnp | grep -E '67|69|2049'"
+        fi
     fi
 }
 
