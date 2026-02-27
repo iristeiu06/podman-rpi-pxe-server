@@ -23,7 +23,7 @@ print_usage() {
     echo "  logs      Show container logs"
     echo "  shell     Open a shell in the running container"
     echo "  status    Show container status"
-    echo "  setup     Create data directories and show next steps"
+    echo "  setup [image.img]  Extract boot files and rootfs from image (default: kuiper_image.img)"
     echo ""
 }
 
@@ -34,11 +34,24 @@ check_root() {
 }
 
 setup_directories() {
-    echo -e "${GREEN}Creating data directories...${NC}"
+    local IMG_FILE="${1:-kuiper_image.img}"
+
+    if [ ! -f "$IMG_FILE" ]; then
+        echo -e "${RED}Error: Image file '$IMG_FILE' not found${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}Setting up from image: $IMG_FILE${NC}"
+
+    # Clean existing data before extraction
+    echo -e "${YELLOW}Cleaning existing data directories...${NC}"
+    rm -rf data/tftpboot/*
+    rm -rf data/nfs/rpi/rootfs/*
+
     mkdir -p data/tftpboot/
     mkdir -p data/nfs/rpi/rootfs
 
-    LOOP_DEVICE=$(losetup -fP --show kuiper_image.img)
+    LOOP_DEVICE=$(losetup -fP --show "$IMG_FILE")
     mkdir -p /mnt/pi-boot /mnt/pi-rootfs
     mount ${LOOP_DEVICE}p1 /mnt/pi-boot
     mount ${LOOP_DEVICE}p2 /mnt/pi-rootfs
@@ -216,7 +229,7 @@ case "${1:-}" in
         show_status
         ;;
     setup)
-        setup_directories
+        setup_directories "$2"
         ;;
     *)
         print_usage
