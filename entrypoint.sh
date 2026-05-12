@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Starting PXE Boot Server for Raspberry Pi ==="
+echo "## Starting PXE Boot Server for Raspberry Pi"
 
 # Function to handle shutdown gracefully
 cleanup() {
@@ -27,14 +27,12 @@ fi
 
 # Display network info
 echo ""
-echo "=== Network Configuration ==="
+echo "## Network Configuration"
 ip addr show | grep -E "inet |link/ether" | head -10
 echo ""
 
-# =============================================================================
 # Detect SERVER_IP and update boot configuration files
-# =============================================================================
-echo "=== Configuring Server IP ==="
+echo "## Configuring Server IP"
 
 # Get interface from dnsmasq.conf or use default
 INTERFACE=$(grep "^interface=" /etc/dnsmasq.conf 2>/dev/null | cut -d= -f2 | head -1)
@@ -77,8 +75,8 @@ fi
 echo ""
 
 # Check for required directories
-echo "=== Checking directories ==="
-if [ -d /tftpboot/rpi ]; then
+echo "## Checking directories"
+if [ -d /tftpboot ]; then
     TFTP_FILES=$(find /tftpboot -type f | wc -l)
     echo "TFTP: /tftpboot contains $TFTP_FILES files"
 else
@@ -132,15 +130,12 @@ else
 fi
 
 echo ""
-echo "=== PXE Boot Server Ready ==="
+echo "## PXE Boot Server Ready"
 echo "Services running:"
 echo "  - DHCP/TFTP (dnsmasq): ports 67, 69, 4011"
 echo "  - NFS (Ganesha): port 2049"
 echo ""
 echo "Server IP: ${SERVER_IP:-unknown}"
-echo ""
-echo "Mount the root filesystem from clients using:"
-echo "  mount -t nfs ${SERVER_IP:-<server-ip>}:/rpi/rootfs /mnt"
 echo ""
 
 # Wait for any process to exit
