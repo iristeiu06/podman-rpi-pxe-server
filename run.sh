@@ -69,6 +69,9 @@ setup_directories() {
     cp config_files/cmdline.txt data/tftpboot/cmdline.txt
     cp config_files/fstab data/nfs/rpi/rootfs/etc/fstab
 
+    # Create /boot/firmware mount point for bind mount in container
+    mkdir -p data/nfs/rpi/rootfs/boot/firmware
+
     # Create kernel pseudo-filesystem mountpoints that the Kuiper image lacks
     # Without these, systemd fails to mount mqueue/debugfs/tracefs/configfs at boot
     sudo mkdir -p \

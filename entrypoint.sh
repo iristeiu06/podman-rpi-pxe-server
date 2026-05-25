@@ -93,6 +93,13 @@ else
 fi
 echo ""
 
+# Bind mount tftpboot into rootfs so RPi sees /boot/firmware via NFS root
+echo "## Setting up /boot/firmware bind mount"
+mkdir -p /nfs/rpi/rootfs/boot/firmware
+mount --bind /tftpboot /nfs/rpi/rootfs/boot/firmware
+echo "Bind mounted /tftpboot -> /nfs/rpi/rootfs/boot/firmware"
+echo ""
+
 # Start rpcbind (required for NFS)
 echo "Starting rpcbind..."
 mkdir -p /run/rpcbind
