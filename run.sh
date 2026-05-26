@@ -18,14 +18,16 @@ print_usage() {
     echo "Usage: sudo $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  build     Build the container image"
-    echo "  start     Start the PXE server"
-    echo "  stop      Stop the PXE server"
-    echo "  restart   Restart the PXE server"
-    echo "  logs      Show container logs"
-    echo "  shell     Open a shell in the running container"
-    echo "  status    Show container status"
-    echo "  setup [image.img]  Extract boot files and rootfs from image (default: kuiper_image.img)"
+    echo "  build               Build the container image"
+    echo "  init                Initialize directories (creates empty structure): backup, staging, data/tftpboot, data/nfs/rpi/rootfs"
+    echo "  logs                Show container logs"
+    echo "  restart             Restart the PXE server"
+    echo "  restore [backup_dir]  Restore boot/modules from a backup directory (default: latest backup in backup/)"
+    echo "  shell               Open a shell in the running container"
+    echo "  setup [image.img]   Extract boot files and rootfs from image (default: kuiper_image.img)"
+    echo "  stop                Stop the PXE server"
+    echo "  start               Start the PXE server"
+    echo "  status              Show container status"
     echo ""
 }
 
@@ -33,6 +35,16 @@ check_root() {
     if [ "$EUID" -ne 0 ]; then
         echo -e "${YELLOW}Warning: Some operations may require root privileges${NC}"
     fi
+}
+
+init_directory() {
+    echo -e "${GREEN}Initializing directory structure...${NC}"
+    mkdir -p backup staging data/tftpboot data/nfs/rpi/rootfs
+    echo "Directories created:"
+    echo "  backup/           <- Backups of existing boot/modules will be stored here"
+    echo "  staging/          <- Place boot/modules tarballs here for deployment"
+    echo "  data/tftpboot/    <- Boot files (kernel, dtbs, config.txt, cmdline.txt, overlays) go here"
+    echo "  data/nfs/rpi/rootfs/ <- Root filesystem goes here"
 }
 
 setup_directories() {
@@ -146,6 +158,38 @@ restart_container() {
     start_container
 }
 
+restore_backup() {
+    local BACKUP_DIR="${1:-}"
+    if [ -z "$BACKUP_DIR" ]; then
+        BACKUP_DIR=$(ls -td backup/backup_* | head -n 1)
+        echo "No backup directory specified, using latest: $BACKUP_DIR"
+    fi
+
+    if [ ! -d "$BACKUP_DIR" ]; then
+        echo -e "${RED}Error: Backup directory '$BACKUP_DIR' not found${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}Restoring from backup: $BACKUP_DIR${NC}"
+
+    if [ -d "$BACKUP_DIR/tftpboot" ]; then
+        cp -a "$BACKUP_DIR/tftpboot"/* data/tftpboot/
+        echo "Restored tftpboot files"
+    else
+        echo "No tftpboot backup found in $BACKUP_DIR"
+    fi
+
+    if [ -d "$BACKUP_DIR/modules" ]; then
+        cp -a "$BACKUP_DIR/modules"/* data/nfs/rpi/rootfs/lib/modules/
+        echo "Restored kernel modules"
+    else
+        echo "No modules backup found in $BACKUP_DIR"
+    fi
+
+    echo "Restore complete. Restarting container..."
+    restart_container
+}
+
 show_logs() {
     podman logs -f rpi-pxe-server
 }
@@ -176,17 +220,20 @@ case "${1:-}" in
     build)
         build_image
         ;;
-    start)
-        start_container
+    init)
+        init_directory
         ;;
-    stop)
-        stop_container
+    logs)
+        show_logs
         ;;
     restart)
         restart_container
         ;;
-    logs)
-        show_logs
+    restore)
+        restore_backup "$2"
+        ;;
+    setup)
+        setup_directories "$2"
         ;;
     shell)
         open_shell
@@ -194,8 +241,11 @@ case "${1:-}" in
     status)
         show_status
         ;;
-    setup)
-        setup_directories "$2"
+    start)
+        start_container
+        ;;
+    stop)
+        stop_container
         ;;
     *)
         print_usage
